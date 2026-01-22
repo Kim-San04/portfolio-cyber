@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>H. SAWADOGO | Lead Security Terminal</title>
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root {
+            --bg-color: #050505;
+            --cmd-bg: #0c0c0c;
+            --text-color: #e0e0e0;
+            --primary: #00f2ff;
+            --secondary: #64748b;
+            --error: #ff3e3e;
+            --success: #00ff41;
+            --border: #1e293b;
+            --terminal-green: #00ff41;
+            --gold: #facc15;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            cursor: crosshair;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'JetBrains Mono', monospace;
+            overflow-x: hidden;
+            line-height: 1.6;
+        }
+
+        /* --- Scanline Effect --- */
+        body::before {
+            content: " ";
+            display: block;
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.15) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+            z-index: 9999;
+            background-size: 100% 3px, 3px 100%;
+            pointer-events: none;
+        }
+
+        /* --- Boot Overlay --- */
+        #boot-screen {
+            position: fixed;
+            inset: 0;
+            background: black;
+            z-index: 10000;
+            padding: 2rem;
+            font-size: 0.8rem;
+            color: var(--terminal-green);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        nav {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            background: rgba(12, 12, 12, 0.95);
+            border-bottom: 1px solid var(--border);
+            padding: 0.5rem 5%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+            backdrop-filter: blur(5px);
+        }
+
+        .nav-links { display: flex; gap: 1.5rem; list-style: none; }
+        .nav-links a { color: var(--text-color); text-decoration: none; font-size: 0.8rem; text-transform: uppercase; transition: 0.3s; }
+        .nav-links a:hover { color: var(--primary); text-shadow: 0 0 8px var(--primary); }
+
+        .console-container {
+            max-width: 1100px;
+            margin: 6rem auto 2rem;
+            padding: 0 5%;
+        }
+
+        .terminal-window {
+            background: var(--cmd-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            box-shadow: 0 0 40px rgba(0, 242, 255, 0.05);
+            overflow: hidden;
+            margin-bottom: 2rem;
+        }
+
+        .terminal-header {
+            background: #1e293b;
+            padding: 10px 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .terminal-body { padding: 1.5rem; min-height: 250px; }
+
+        section { padding: 4rem 0; border-bottom: 1px dashed var(--border); }
+        .section-title { color: var(--primary); font-size: 1.4rem; margin-bottom: 2rem; display: flex; align-items: center; gap: 10px; }
+
+        /* --- Bio Narrative Style --- */
+        .bio-narrative {
+            background: rgba(255,255,255,0.02);
+            padding: 2rem;
+            border: 1px solid var(--border);
+            border-left: 4px solid var(--primary);
+            font-size: 1rem;
+            color: #ddd;
+            line-height: 1.8;
+            text-align: justify;
+        }
+        .bio-narrative p { margin-bottom: 1.5rem; }
+        .bio-narrative p:last-child { margin-bottom: 0; }
+
+        /* --- Career Blocks --- */
+        .career-block {
+            margin-bottom: 3rem;
+            border-left: 2px solid var(--primary);
+            padding-left: 1.5rem;
+            position: relative;
+        }
+        .career-block::before {
+            content: "";
+            position: absolute;
+            left: -6px;
+            top: 0;
+            width: 10px;
+            height: 10px;
+            background: var(--primary);
+            border-radius: 50%;
+        }
+        .career-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem; flex-wrap: wrap; gap: 10px; }
+        .career-title { font-size: 1.2rem; color: #fff; font-weight: bold; }
+        .career-meta { color: var(--secondary); font-size: 0.85rem; font-weight: bold; text-transform: uppercase; }
+        .career-desc { font-size: 0.9rem; color: #ccc; line-height: 1.7; }
+        .career-desc p { margin-bottom: 15px; position: relative; padding-left: 15px; text-align: justify; }
+        .career-desc p::before { content: ">"; position: absolute; left: 0; color: var(--primary); }
+
+        /* --- Certification Vault --- */
+        .cert-vault {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 15px;
+            margin-top: 2rem;
+        }
+        .cert-card {
+            background: linear-gradient(135deg, rgba(0, 242, 255, 0.05) 0%, rgba(12, 12, 12, 1) 100%);
+            border: 1px solid var(--border);
+            padding: 1.2rem;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            transition: 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+        .cert-card::after {
+            content: "VERIFIED";
+            position: absolute;
+            top: 5px;
+            right: -20px;
+            background: var(--success);
+            color: black;
+            font-size: 0.5rem;
+            font-weight: bold;
+            padding: 2px 25px;
+            transform: rotate(45deg);
+        }
+        .cert-card:hover { border-color: var(--primary); box-shadow: 0 0 15px rgba(0, 242, 255, 0.1); transform: translateY(-2px); }
+        .cert-icon {
+            background: rgba(0, 242, 255, 0.1);
+            color: var(--primary);
+            width: 45px;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            border: 1px solid var(--primary);
+        }
+        .cert-info h4 { font-size: 0.85rem; color: #fff; margin-bottom: 4px; }
+        .cert-info p { font-size: 0.7rem; color: var(--secondary); letter-spacing: 0.5px; }
+
+        /* --- Project Tree View --- */
+        .tree-container { font-size: 0.9rem; color: #ccc; margin-top: 1rem; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        .tree-line { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; padding: 4px 8px; transition: 0.2s; white-space: nowrap; }
+        .tree-line:hover { color: var(--primary); background: rgba(0,242,255,0.05); }
+        .tree-indent { margin-left: 20px; border-left: 1px dashed var(--secondary); padding-left: 15px; }
+        .folder-icon { color: var(--gold); }
+        .file-icon { color: var(--primary); }
+
+        /* --- Badges Hero --- */
+        .badge-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 12px;
+            margin-top: 1.5rem;
+        }
+        .badge-item {
+            border: 1px solid var(--border);
+            padding: 12px;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: rgba(255,255,255,0.02);
+            transition: 0.3s;
+            min-width: 0;
+            word-wrap: break-word;
+        }
+        .badge-item:hover { border-color: var(--primary); background: rgba(0, 242, 255, 0.05); }
+        .badge-item i { flex-shrink: 0; color: var(--primary); }
+        .badge-label { font-weight: bold; color: var(--primary); margin-right: 5px; text-transform: uppercase; flex-shrink: 0; }
+        .badge-value { color: #fff; line-height: 1.4; }
+        .badge-highlight { border-color: var(--success); background: rgba(0, 255, 65, 0.08); }
+
+        /* --- Interactive Terminal --- */
+        .interactive-cmd {
+            background: #000;
+            border: 1px solid var(--primary);
+            padding: 1rem;
+            margin-top: 3rem;
+            border-radius: 4px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        .input-line { display: flex; gap: 10px; align-items: center; }
+        .input-line input {
+            background: transparent;
+            border: none;
+            color: var(--primary);
+            font-family: inherit;
+            font-size: 1rem;
+            width: 100%;
+            outline: none;
+        }
+
+        footer { padding: 4rem; text-align: center; font-size: 0.7rem; color: var(--secondary); border-top: 1px solid var(--border); }
+
+        @media (max-width: 768px) {
+            .nav-links { display: none; }
+            .career-header { flex-direction: column; gap: 5px; }
+            .badge-grid { grid-template-columns: 1fr; }
+            .badge-item { font-size: 0.8rem; }
+            /* Remove fixed white-space constraint on mobile for the long badge */
+            .badge-value { white-space: normal; }
+            .bio-narrative { padding: 1.2rem; font-size: 0.9rem; }
+            .terminal-header { font-size: 0.6rem; }
+            .section-title { font-size: 1.2rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- BOOT SCREEN OVERLAY -->
+    <div id="boot-screen"></div>
+
+    <nav>
+        <div class="nav-id">H_SAWADOGO_SEC_OS [ROOT]</div>
+        <ul class="nav-links">
+            <li><a href="#about">/whoami</a></li>
+            <li><a href="#projects">/fs/projects</a></li>
+            <li><a href="#career">/var/log/career</a></li>
+            <li><a href="#education">/etc/edu</a></li>
+        </ul>
+        <button class="lang-btn" onclick="toggleLanguage()" style="background:transparent; border:1px solid var(--primary); color:var(--primary); padding:2px 8px; font-family:inherit; font-size:0.7rem; cursor:pointer;">LANG: <span id="lang-text">FR</span></button>
+    </nav>
+
+    <div class="console-container">
+        
+        <!-- MAIN TERMINAL WINDOW -->
+        <div class="terminal-window">
+            <div class="terminal-header">
+                <div style="display:flex; gap:6px;"><span style="width:10px;height:10px;background:#ff5f56;border-radius:50%"></span><span style="width:10px;height:10px;background:#ffbd2e;border-radius:50%"></span><span style="width:10px;height:10px;background:#27c93f;border-radius:50%"></span></div>
+                <div style="font-size:0.7rem; color:var(--secondary)">SESSION_ID: <span id="session-id"></span> | ALPHA-LEVEL</div>
+            </div>
+            <div class="terminal-body">
+                <div id="hero-section">
+                    <p style="color:var(--success); font-size:0.8rem;">[✓] Identity Verified: Authorized Access</p>
+                    <h1 style="font-size: 2.2rem; color: var(--primary); margin: 0.5rem 0;">Cheick Abdel Hadime Hakim SAWADOGO</h1>
+                    <p style="font-size: 1rem; color: #bbb; max-width: 850px;" data-i18n="hero_desc">
+                        Expert en devenir Cybersécurité, Réseaux & Cloud. Spécialisé en défense d'infrastructure, surveillance réseau et audit de sécurité offensive.
+                    </p>
+                    <div class="badge-grid">
+                        <div class="badge-item"><i data-lucide="search"></i> <div><span class="badge-label">SEARCH:</span><span class="badge-value" data-i18n="status_field">STAGE & ALTERNANCE</span></div></div>
+                        <div class="badge-item badge-highlight"><i data-lucide="calendar"></i> <div><span class="badge-label">AVAIL:</span><span class="badge-value" data-i18n="availability">STAGE: IMMÉDIAT | ALT: SEPT 2026</span></div></div>
+                        <div class="badge-item"><i data-lucide="mail"></i> <div><span class="badge-label">EMAIL:</span><span class="badge-value">cheick.sawadogo@efrei.net</span></div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ABOUT SECTION (WHOAMI NARRATIVE) -->
+        <section id="about">
+            <h2 class="section-title"><i data-lucide="terminal"></i> ./whoami.sh</h2>
+            <div class="bio-narrative" id="whoami-desc">
+                <!-- Injected via JS -->
+            </div>
+        </section>
+
+        <!-- CAREER SECTION -->
+        <section id="career">
+            <h2 class="section-title"><i data-lucide="activity"></i> /var/log/career</h2>
+            
+            <div class="career-block">
+                <div class="career-header">
+                    <span class="career-title" data-i18n="exp_asec_title">Support technique et logiciel (Stage)</span>
+                    <span class="career-meta">07/2025 - 09/2025 | ASECNA (Sénégal)</span>
+                </div>
+                <div class="career-desc" id="asec-full-desc"></div>
+            </div>
+
+            <div class="career-block">
+                <div class="career-header">
+                    <span class="career-title" data-i18n="exp_fefas_title">Responsable Département Organisation</span>
+                    <span class="career-meta">01/2025 - 01/2026 | FEFAS (Dakar)</span>
+                </div>
+                <div class="career-desc" id="fefas-full-desc"></div>
+            </div>
+        </section>
+
+        <!-- EDUCATION & CERTIFICATIONS -->
+        <section id="education">
+            <h2 class="section-title"><i data-lucide="graduation-cap"></i> /etc/edu</h2>
+            <div class="timeline" style="margin-bottom: 3rem;">
+                <div class="career-block" style="margin-bottom: 1.5rem;">
+                    <div class="career-header">
+                        <span class="career-title" data-i18n="edu_mast">Mastère Cybersécurité, Réseaux et Cloud</span>
+                        <span class="career-meta">2025 - 2027 | Efrei Bordeaux</span>
+                    </div>
+                </div>
+                <div class="career-block" style="margin-bottom: 1rem;">
+                    <div class="career-header">
+                        <span class="career-title" data-i18n="edu_lic">Licence Admin. & Sécurité des Réseaux</span>
+                        <span class="career-meta">2025 | ESMT Dakar</span>
+                    </div>
+                </div>
+            </div>
+
+            <h3 style="color:var(--primary); font-size:1rem; margin-bottom:1.5rem; display:flex; align-items:center; gap:10px;">
+                <i data-lucide="award"></i> [CERTIFICATION_VAULT]
+            </h3>
+            <div class="cert-vault">
+                <div class="cert-card">
+                    <div class="cert-icon"><i data-lucide="shield-check"></i></div>
+                    <div class="cert-info">
+                        <h4>CCNA: Network Security</h4>
+                        <p>ID: CSCO-SEC-VERIFIED</p>
+                    </div>
+                </div>
+                <div class="cert-card">
+                    <div class="cert-icon"><i data-lucide="server"></i></div>
+                    <div class="cert-info">
+                        <h4>CCNA: Enterprise Networking</h4>
+                        <p>ID: CSCO-ENT-VERIFIED</p>
+                    </div>
+                </div>
+                <div class="cert-card">
+                    <div class="cert-icon"><i data-lucide="share-2"></i></div>
+                    <div class="cert-info">
+                        <h4>CCNA: Switching & Routing</h4>
+                        <p>ID: CSCO-SWR-VERIFIED</p>
+                    </div>
+                </div>
+                <div class="cert-card">
+                    <div class="cert-icon"><i data-lucide="cpu"></i></div>
+                    <div class="cert-info">
+                        <h4>CCNA: Intro to Networks</h4>
+                        <p>ID: CSCO-ITN-VERIFIED</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- PROJECTS SECTION -->
+        <section id="projects">
+            <h2 class="section-title"><i data-lucide="folder-tree"></i> /fs/projects</h2>
+            <div class="tree-container">
+                <div class="tree-line"><i data-lucide="folder" class="folder-icon"></i> <span>repositories/</span></div>
+                <div class="tree-indent">
+                    <div class="tree-line"><i data-lucide="folder" class="folder-icon"></i> <span>BlueTeam_Defense/</span></div>
+                    <div class="tree-indent">
+                        <div class="tree-line"><i data-lucide="file-text" class="file-icon"></i> <a href="https://github.com/Kim-San04/Projet-Blue-team" target="_blank" style="color:inherit;text-decoration:none">SI_Simulation_Docs.md</a></div>
+                    </div>
+                    
+                    <div class="tree-line"><i data-lucide="folder" class="folder-icon"></i> <span>Offensive_Security/</span></div>
+                    <div class="tree-indent">
+                        <div class="tree-line"><i data-lucide="file-text" class="file-icon"></i> <a href="https://github.com/Kim-San04/AppSec-Pentest-Lab-Black_Box" target="_blank" style="color:inherit;text-decoration:none">Pentest_OWASP_Report.pdf</a></div>
+                        <div class="tree-line"><i data-lucide="file-text" class="file-icon"></i> <a href="https://github.com/Kim-San04/Blind-SQL-Injection-Analysis" target="_blank" style="color:inherit;text-decoration:none">Blind_SQLi_Analysis.py</a></div>
+                    </div>
+
+                    <div class="tree-line"><i data-lucide="folder" class="folder-icon"></i> <span>Wireless_Security/</span></div>
+                    <div class="tree-indent">
+                        <div class="tree-line"><i data-lucide="file-text" class="file-icon"></i> <a href="https://github.com/Kim-San04/Wireless-Hacking-Concepts-Methods-Security" target="_blank" style="color:inherit;text-decoration:none">WPA_Security_Research.md</a></div>
+                    </div>
+
+                    <div class="tree-line"><i data-lucide="folder" class="folder-icon"></i> <span>Infrastructure_Cloud/</span></div>
+                    <div class="tree-indent">
+                        <div class="tree-line"><i data-lucide="file-text" class="file-icon"></i> <a href="https://github.com/Kim-San04/Mail-Server-Comparative-Study-iRedMail-Deployment" target="_blank" style="color:inherit;text-decoration:none">iRedMail_Deployment_Security.sh</a></div>
+                        <div class="tree-line"><i data-lucide="file-text" class="file-icon"></i> <a href="https://github.com/Kim-San04/TP_Cloud_Computing_M1_CSC" target="_blank" style="color:inherit;text-decoration:none">Cloud_IaC_Orchestration.yaml</a></div>
+                    </div>
+
+                    <div class="tree-line"><i data-lucide="folder" class="folder-icon"></i> <span>Network_Monitoring/</span></div>
+                    <div class="tree-indent">
+                        <div class="tree-line"><i data-lucide="file-text" class="file-icon"></i> <a href="https://github.com/Kim-San04/Etude-Mise-en-Oeuvre-Monitoring-Reseau" target="_blank" style="color:inherit;text-decoration:none">Monitoring_Dashboard.log</a></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- INTERACTIVE CLI -->
+        <div class="interactive-cmd">
+            <div id="terminal-history" style="font-size:0.85rem; color:#888; margin-bottom:10px;">
+                <p>HAKIM-OS [6.4] Terminal session started.</p>
+                <p>Type 'help' to see available commands.</p>
+            </div>
+            <div class="input-line">
+                <span class="cmd-prompt">guest@hakim-os:~$</span>
+                <input type="text" id="terminal-input" autocomplete="off" spellcheck="false">
+            </div>
+        </div>
+
+    </div>
+
+    <footer style="padding:4rem; text-align:center; font-size:0.7rem; color:var(--secondary); border-top: 1px solid var(--border);">
+        &copy; 2026 CHEICK ABDEL HADIME HAKIM SAWADOGO | SYSTEM_ENVIRONMENT_SECURED
+    </footer>
+
+    <script>
+        lucide.createIcons();
+
+        const sessionID = "SEC-" + Math.random().toString(36).substring(2, 9).toUpperCase();
+        document.getElementById('session-id').innerText = sessionID;
+
+        const bootLogs = [
+            "INITIALIZING KERNEL MODULES...",
+            "DECRYPTING SECURITY VAULT...",
+            "CHECKING CISCO CERTIFICATES... [VERIFIED]",
+            "SCANNING FS/PROJECTS (7 REPOS FOUND)...",
+            "ESTABLISHING SECURE CONNECTION...",
+            "ACCESS_GRANTED: WELCOME AGENT SAWADOGO"
+        ];
+        const bootScreen = document.getElementById('boot-screen');
+        let logIndex = 0;
+        function renderBoot() {
+            if (logIndex < bootLogs.length) {
+                const p = document.createElement('p');
+                p.innerText = `> ${bootLogs[logIndex]}`;
+                bootScreen.appendChild(p);
+                logIndex++;
+                setTimeout(renderBoot, 120);
+            } else {
+                setTimeout(() => { 
+                    bootScreen.style.opacity = '0'; 
+                    setTimeout(() => {
+                        bootScreen.style.display = 'none';
+                        // Force scroll to top at the end of boot sequence to prevent jump to terminal
+                        window.scrollTo(0, 0);
+                    }, 500); 
+                }, 600);
+            }
+        }
+        window.onload = renderBoot;
+
+        const input = document.getElementById('terminal-input');
+        const history = document.getElementById('terminal-history');
+        const cmds = {
+            'help': 'Available: help, whoami, projects, career, contact, clear',
+            'whoami': 'CHEICK ABDEL HADIME HAKIM SAWADOGO - Future Cybersecurity Expert.',
+            'contact': 'Mail: cheick.sawadogo@efrei.net',
+            'clear': 'CLEARING'
+        };
+
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const cmd = input.value.trim().toLowerCase();
+                const line = document.createElement('p');
+                line.innerHTML = `<span style="color:var(--primary)">guest@hakim-os:~$</span> ${cmd}`;
+                history.appendChild(line);
+                if (cmd === 'clear') history.innerHTML = '';
+                else if (cmds[cmd]) {
+                    const resp = document.createElement('p');
+                    resp.style.color = 'var(--success)';
+                    resp.innerText = `>> ${cmds[cmd]}`;
+                    history.appendChild(resp);
+                }
+                input.value = '';
+                // Only auto-scroll when user interacts with terminal
+                window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+            }
+        });
+
+        const translations = {
+            fr: {
+                hero_desc: "Expert en devenir Cybersécurité, Réseaux & Cloud. Spécialisé en défense d'infrastructure, surveillance réseau et audit de sécurité offensive.",
+                status_field: "STAGE & ALTERNANCE",
+                availability: "STAGE: IMMÉDIAT | ALT: SEPT 2026",
+                whoami_html: `
+                    <p>Étudiant en cybersécurité avec une solide base en systèmes et réseaux, orienté vers la compréhension globale des systèmes d’information.</p>
+                    <p>Mon approche est méthodique et analytique, avec une attention particulière portée à la documentation, à la traçabilité des actions et à la compréhension des mécanismes techniques.</p>
+                    <p>À travers des projets académiques et personnels, j’ai exploré aussi bien la sécurité défensive que l’audit technique et la sécurité applicative, dans des environnements pédagogiques contrôlés.</p>
+                    <p>Je souhaite poursuivre mon évolution dans des environnements techniques exigeants, favorisant l’apprentissage continu, la collaboration et la montée en compétences progressive.</p>
+                `,
+                exp_asec_title: "Support technique et logiciel (Stage)",
+                exp_fefas_title: "Responsable Département Organisation",
+                edu_mast: "Mastère Cybersécurité, Réseaux et Cloud",
+                edu_lic: "Licence Admin. & Sécurité des Réseaux",
+                asec_txt: `
+                    <p>Environnement technique et critique impliquant des systèmes informatiques et réseaux à haute disponibilité.</p>
+                    <p>Participation aux activités de support et d’exploitation des systèmes et réseaux, incluant le diagnostic d’incidents, l’analyse de dysfonctionnements, la maintenance préventive et corrective, ainsi que l’observation des mécanismes de sécurisation des flux et des accès.</p>
+                    <p>Cette expérience m’a permis de développer une compréhension concrète du fonctionnement d’un système d’information, de l’importance de la traçabilité, de la rigueur opérationnelle et du travail en équipe dans un contexte sensible.</p>
+                `,
+                fefas_txt: `
+                    <p>Rôle transverse impliquant l’organisation, la coordination et le suivi d’activités au sein d’une structure associative.</p>
+                    <p>Responsable de la planification des actions, de la coordination d’équipes, de la gestion des priorités et du respect des délais, avec un fort accent sur la communication, la documentation et la prise de décision collective.</p>
+                    <p>Cette expérience a renforcé mes compétences en organisation, en gestion de projet, en communication et en leadership, des qualités essentielles dans des environnements techniques collaboratifs.</p>
+                `
+            },
+            en: {
+                hero_desc: "Cybersecurity, Networks & Cloud expert-in-training. Specialized in infrastructure defense, network monitoring, and offensive security auditing.",
+                status_field: "INTERNSHIP & APPRENTICESHIP",
+                availability: "INTERN: NOW | ALT: SEPT 2026",
+                whoami_html: `
+                    <p>Cybersecurity student with a solid foundation in systems and networks, focused on global information systems understanding.</p>
+                    <p>My approach is methodical and analytical, with particular attention given to documentation, action traceability, and understanding technical mechanisms.</p>
+                    <p>Through academic and personal projects, I have explored both defensive security and technical auditing as well as application security, within controlled educational environments.</p>
+                    <p>I aim to continue my growth in demanding technical environments, fostering continuous learning, collaboration, and progressive skill acquisition.</p>
+                `,
+                exp_asec_title: "Tech & Software Support (Internship)",
+                exp_fefas_title: "Head of Organization Department",
+                edu_mast: "Master in Cybersecurity, Networks & Cloud",
+                edu_lic: "Bachelor in Network Admin & Security",
+                asec_txt: `
+                    <p>Technical and critical environment involving high-availability computer and network systems.</p>
+                    <p>Participation in support and operations for systems and networks, including incident diagnosis, failure analysis, preventive and corrective maintenance, as well as monitoring of flow and access security mechanisms.</p>
+                    <p>This experience allowed me to develop a practical understanding of information system functioning, the importance of traceability, operational rigor, and teamwork in a sensitive context.</p>
+                `,
+                fefas_txt: `
+                    <p>Cross-functional role involving organization, coordination, and activity monitoring within an associative structure.</p>
+                    <p>Responsible for action planning, team coordination, priority management, and deadline compliance, with a strong emphasis on communication, documentation, and collective decision-making.</p>
+                    <p>This experience strengthened my skills in organization, project management, communication, and leadership—essential qualities in collaborative technical environments.</p>
+                `
+            }
+        };
+
+        let currentLang = 'fr';
+        function updateAllContent() {
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (translations[currentLang][key]) el.innerText = translations[currentLang][key];
+            });
+            document.getElementById('whoami-desc').innerHTML = translations[currentLang].whoami_html;
+            document.getElementById('asec-full-desc').innerHTML = translations[currentLang].asec_txt;
+            document.getElementById('fefas-full-desc').innerHTML = translations[currentLang].fefas_txt;
+        }
+
+        function toggleLanguage() {
+            currentLang = currentLang === 'fr' ? 'en' : 'fr';
+            document.getElementById('lang-text').innerText = currentLang.toUpperCase();
+            updateAllContent();
+        }
+        updateAllContent();
+    </script>
+</body>
+</html>
